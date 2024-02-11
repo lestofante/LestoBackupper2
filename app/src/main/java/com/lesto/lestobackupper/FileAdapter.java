@@ -5,7 +5,6 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,6 +18,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
     private List<FileItem> itemList;
 
     public FileAdapter(List<FileItem> itemList) {
+        Log.d(Constants.LESTO, "creating new FileAdapter");
         this.itemList = itemList;
     }
 
@@ -40,54 +40,46 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
         return itemList.size();
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    public void setData(List<FileItem> files) {
+        itemList = files;
+        //notifyDataSetChanged();
+    }
+
+    public class ViewHolder extends RecyclerView.ViewHolder {
         TextView textView;
-        CheckBox checkbox1;
-        CheckBox checkbox2;
+        CheckBox should_backup;
+        CheckBox is_remote;
+
+        CheckBox is_local;
 
         long id = -1;
 
         public void recycle(FileItem item) {
             textView.setText(item.name);
             id = item.id;
+
             // Reset checkbox states to avoid recycling issues
-            checkbox1.setChecked(false);
-            checkbox2.setChecked(false);
+            should_backup.setChecked(item.should_backup);
+
+            is_remote.setChecked(item.is_remote);
+            is_remote.setEnabled(false);
+
+            is_local.setChecked(item.is_local);
+            is_local.setEnabled(false);
         }
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             textView = itemView.findViewById(R.id.text_view);
-            checkbox1 = itemView.findViewById(R.id.checkbox1);
-            checkbox2 = itemView.findViewById(R.id.checkbox2);
+            should_backup = itemView.findViewById(R.id.checkbox1);
+            is_local = itemView.findViewById(R.id.checkbox2);
+            is_remote = itemView.findViewById(R.id.checkbox3);
 
-            checkbox1.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    if (isChecked) {
-                        // CheckBox is checked
-                        // Perform your desired action here
-                        Log.d(Constants.LESTO, id + ": checkbox1 is checked");
-                    } else {
-                        // CheckBox is unchecked
-                        // Perform your desired action here
-                        Log.d(Constants.LESTO, id + ": checkbox1 is unchecked");
-                    }
-                }
-            });
-
-            checkbox2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-                @Override
-                public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                    if (isChecked) {
-                        // CheckBox is checked
-                        // Perform your desired action here
-                        Log.d(Constants.LESTO, "checkbox2 is checked");
-                    } else {
-                        // CheckBox is unchecked
-                        // Perform your desired action here
-                        Log.d(Constants.LESTO, "checkbox2 is unchecked");
-                    }
+            should_backup.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                int position = getAdapterPosition();
+                if (position != RecyclerView.NO_POSITION) {
+                    itemList.get(position).should_backup = isChecked;
+                    //notifyItemChanged(position);
                 }
             });
         }

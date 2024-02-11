@@ -78,10 +78,13 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         if (!request_permission){
+            Log.d(Constants.LESTO, "no need to request permission");
+            /*
             RecyclerView recyclerView = findViewById(R.id.ListOfFiles);
             recyclerView.setLayoutManager(new LinearLayoutManager(this)); // Or use GridLayoutManager for grid layout
 
             recyclerView.setAdapter(new FileAdapter(Actions.get_file_list(this.getContentResolver(), Actions.ALL_IMAGES)));
+             */
             return;
         }
 
@@ -101,11 +104,6 @@ public class MainActivity extends AppCompatActivity {
                 // Permissions are denied
                 Log.d(Constants.LESTO, "Some permission ko");
             }
-
-            RecyclerView recyclerView = findViewById(R.id.ListOfFiles);
-            recyclerView.setLayoutManager(new LinearLayoutManager(this)); // Or use GridLayoutManager for grid layout
-
-            recyclerView.setAdapter(new FileAdapter(Actions.get_file_list(this.getContentResolver(), Actions.ALL_IMAGES)));
         });
 
         requestPermissionLauncher.launch(permissions_list);
