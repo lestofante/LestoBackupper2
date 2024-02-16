@@ -6,12 +6,11 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.util.Log;
-import android.view.View;
+
 
 import com.lesto.lestobackupper.Constants;
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -57,6 +56,8 @@ public class Actions {
         }else{
             Log.d(Constants.LESTO, "null cursor");
         }
+
+        Log.d(Constants.LESTO, "get_file_list loaded " + lista.size() + " files");
         return lista;
     }
 
@@ -107,11 +108,11 @@ public class Actions {
             complete.add(i);
         }
 
-        Log.d(Constants.LESTO, "localUpdatedFileList Save new files in db");
+        Log.d(Constants.LESTO, "localUpdatedFileList Save new files in db, found: " + to_add.size());
 
         db.insertAll(to_add);
 
-        Log.d(Constants.LESTO, "localUpdatedFileList find all locally deleted files");
+        Log.d(Constants.LESTO, "localUpdatedFileList find all locally deleted files, found: " + files.size());
 
         // remaining files means they are not local anymore
         for (FileItem i : files.values()){
@@ -123,9 +124,44 @@ public class Actions {
 
         db.updateAll(files.values());
 
-        Log.d(Constants.LESTO, "localUpdatedFileList end");
+        Log.d(Constants.LESTO, "localUpdatedFileList end, found: " + complete.size());
 
         return complete;
     }
 
+    public static class CloudConfig{
+        public final String MY_CLIENT_ID;
+        public final Uri MY_REDIRECT_URI;
+
+        public CloudConfig(String client_id, Uri uri){
+            this.MY_CLIENT_ID = client_id;
+            MY_REDIRECT_URI = uri;
+        }
+    }
+
+//    public static void requestAuth2(Context context, CloudConfig c){
+//        AuthorizationServiceConfiguration.fetchFromIssuer(
+//            Uri.parse("https://idp.example.com"),
+//            new AuthorizationServiceConfiguration.RetrieveConfigurationCallback() {
+//                public void onFetchConfigurationCompleted(
+//                        @Nullable AuthorizationServiceConfiguration serviceConfiguration,
+//                        @Nullable AuthorizationException ex) {
+//                    if (ex != null) {
+//                        Log.e(Constants.LESTO, "failed to fetch configuration");
+//                        return;
+//                    }
+//
+//                    // use serviceConfiguration as needed
+//                    AuthorizationRequest.Builder authRequestBuilder =
+//                        new AuthorizationRequest.Builder(
+//                            serviceConfiguration, // the authorization service configuration
+//                            c.MY_CLIENT_ID, // the client ID, typically pre-registered and static
+//                            ResponseTypeValues.CODE, // the response_type value: we want a code
+//                            c.MY_REDIRECT_URI); // the redirect URI to which the auth response is sent
+//                    AuthorizationService authService = new AuthorizationService(context);
+//                    Intent authIntent = authService.getAuthorizationRequestIntent(authRequestBuilder.build());
+//                    context.startActivityForResult(authIntent, RC_AUTH);
+//                }
+//            });
+//    }
 }

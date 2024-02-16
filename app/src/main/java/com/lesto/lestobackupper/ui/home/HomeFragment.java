@@ -49,14 +49,14 @@ public class HomeFragment extends Fragment {
 
         Log.d(Constants.LESTO, "adapter set");
 
-        FileItem test[] = {
-                new FileItem(0, "0", "0", 0, "0", false, false, false),
-                new FileItem(1, "1", "0", 0, "0", false, false, false),
-                new FileItem(2, "2", "0", 0, "0", false, false, false),
-                new FileItem(3, "3", "0", 0, "0", false, false, false),
-                new FileItem(4, "4", "0", 0, "0", false, false, false),
-                new FileItem(5, "5", "0", 0, "0", false, false, false),
-        };
+//        FileItem test[] = {
+//                new FileItem(0, "0", "0", 0, "0", false, false, false),
+//                new FileItem(1, "1", "0", 0, "0", false, false, false),
+//                new FileItem(2, "2", "0", 0, "0", false, false, false),
+//                new FileItem(3, "3", "0", 0, "0", false, false, false),
+//                new FileItem(4, "4", "0", 0, "0", false, false, false),
+//                new FileItem(5, "5", "0", 0, "0", false, false, false),
+//        };
 
         Executors.newSingleThreadExecutor().execute(() -> {
             Log.d(Constants.LESTO, "Getting updated file list");
