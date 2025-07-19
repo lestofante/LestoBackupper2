@@ -1,19 +1,29 @@
 extern crate rcgen;
 
-use std::{env, thread, time};
 use std::error::Error as StdError;
 use std::fs::File;
-use std::io::{BufReader, Read, Write};
+use std::io::{BufReader, Read};
 use std::net::TcpListener;
-use std::sync::Arc;
+use qrcode::QrCode;
+
+mod protobuf;
+mod client;
 
 fn main() -> Result<(), Box<dyn StdError>> {
-    let mut args = env::args();
-    args.next();
+
+    //LestoBackupper::run(iced::Settings::default());
+
     let cert_file = "cert.key";
     let private_key_file = "private.key";
 
-    let certs = rustls_pemfile::certs(&mut BufReader::new(&mut File::open(cert_file)?))
+    let mut buffer_cert_file = Vec::new();
+    File::open(cert_file)
+        .expect("Failed to open file")
+        .read_to_end(&mut buffer_cert_file)
+        .expect("Failed to read file");
+    
+    let mut cursor = std::io::Cursor::new(&buffer_cert_file);
+    let certs = rustls_pemfile::certs(&mut cursor)
         .collect::<Result<Vec<_>, _>>()?;
     let private_key =
         rustls_pemfile::private_key(&mut BufReader::new(&mut File::open(private_key_file)?))?
@@ -22,46 +32,61 @@ fn main() -> Result<(), Box<dyn StdError>> {
         .with_no_client_auth()
         .with_single_cert(certs, private_key)?;
 
+    print_cert(buffer_cert_file);
+
     let listener = TcpListener::bind(format!("[::]:{}", 4443)).unwrap();
-    let (mut stream, _) = listener.accept()?;
+    let (stream, _) = listener.accept()?;
 
     println!("Connected client: {:?}", stream);
 
-    let mut conn = rustls::ServerConnection::new(Arc::new(config)).unwrap();
-    conn.complete_io(&mut stream).unwrap();
-
-    println!("s1");
-
-    conn.writer().write_all(b"Hello from the server").unwrap();
-    println!("s2");
-    conn.complete_io(&mut stream).unwrap();
-    println!("s3");
-    loop{
-        let mut buf = [0; 64];
-        conn.complete_io(&mut stream).unwrap();
-        if let Ok(len) = conn.reader().read(&mut buf){
-            if len == 0{
-                println!("Client disconnected");
-                break;
-            }
-            println!("Received message from client: {:?}", &buf[..len]);
-            
-        }
-        thread::sleep(time::Duration::from_millis(10));
-    }
+    client::run_client(config, stream);
 
     Ok(())
 }
 
+fn print_cert<D: AsRef<[u8]>>(data: D){
+    // Encode some data into bits.
+    let code = QrCode::new(data).unwrap();
+
+    // You can also render it into a string.
+    /*
+    let string = code.render()
+        .light_color(' ')
+        .dark_color('#')
+        .build();
+    println!("{}", string);
+    */
+
+    // Render the bits into an image.
+    let image = code.render::<image::Luma<u8>>().build();
+
+    // Save the image.
+    image.save("/tmp/qrcode.png").unwrap();
+}
+
 #[test]
 fn create_cert() {
-    
-    use rcgen::generate_simple_self_signed;
-    // Generate a certificate that's valid for "localhost" and "hello.world.example"
-    let subject_alt_names = vec!["hello.world.example".to_string(),
-        "localhost".to_string()];
+    match hostname::get() {
+        Ok(hostname_os) => {
+            let hostname = hostname_os.to_str().unwrap();
+            println!("Hostname: {}", hostname);
+            use rcgen::generate_simple_self_signed;
+            // Generate a certificate that's valid for "localhost" and "hello.world.example"
+            let mut subject_alt_names = vec![hostname.to_string()];
 
-    let cert = generate_simple_self_signed(subject_alt_names).unwrap();
-    println!("{}", cert.serialize_pem().unwrap());
-    println!("{}", cert.serialize_private_key_pem());
+            let network_interfaces = local_ip_address::list_afinet_netifas().unwrap();
+
+            for (name, ip) in network_interfaces.iter() {
+                if name != "lo"{
+                    subject_alt_names.push(ip.to_string());
+                    println!("{}:\t{:?}", name, ip);
+                }
+            }
+
+            let cert = generate_simple_self_signed(subject_alt_names).unwrap();
+            println!("{}", cert.serialize_pem().unwrap());
+            println!("{}", cert.serialize_private_key_pem());
+        },
+        Err(e) => eprintln!("Error getting hostname: {}", e),
+    }
 }

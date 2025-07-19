@@ -1,5 +1,6 @@
 package com.lesto.lestobackupper;
 
+import android.app.Activity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,9 +17,11 @@ import java.util.List;
 public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
 
     private List<FileItem> itemList;
+    Activity activity;
 
-    public FileAdapter(List<FileItem> itemList) {
+    public FileAdapter(Activity activity, List<FileItem> itemList) {
         Log.d(Constants.LESTO, "creating new FileAdapter");
+        this.activity = activity;
         this.itemList = itemList;
     }
 
@@ -41,8 +44,10 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
     }
 
     public void setData(List<FileItem> files) {
-        itemList = files;
-        //notifyDataSetChanged();
+        activity.runOnUiThread(() -> {
+            itemList = files;
+            notifyDataSetChanged();
+        });
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
@@ -70,7 +75,7 @@ public class FileAdapter extends RecyclerView.Adapter<FileAdapter.ViewHolder> {
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
-            textView = itemView.findViewById(R.id.text_view);
+            textView = itemView.findViewById(R.id.folder_name);
             should_backup = itemView.findViewById(R.id.checkbox1);
             is_local = itemView.findViewById(R.id.checkbox2);
             is_remote = itemView.findViewById(R.id.checkbox3);

@@ -1,1 +1,1 @@
-/home/mauro/AndroidStudioProjects/LestoBackupper/server/target/debug/server: /home/mauro/AndroidStudioProjects/LestoBackupper/server/src/main.rs
+/home/mauro/AndroidStudioProjects/LestoBackupper/server/target/debug/server: /home/mauro/AndroidStudioProjects/LestoBackupper/server/src/client.rs /home/mauro/AndroidStudioProjects/LestoBackupper/server/src/main.rs /home/mauro/AndroidStudioProjects/LestoBackupper/server/src/protobuf/file_description.rs /home/mauro/AndroidStudioProjects/LestoBackupper/server/src/protobuf/mod.rs

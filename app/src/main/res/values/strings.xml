@@ -10,8 +10,13 @@
     <string name="menu_home">Home</string>
     <string name="menu_gallery">Gallery</string>
     <string name="menu_slideshow">Config</string>
+    <string name="menu_folder">Folder</string>
+
 
     <string name="tab_image">Image</string>
     <string name="tab_video">Video</string>
     <string name="tab_music">Music</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="add_folder">Add folder</string>
+    <string name="del_folder">Remove</string>
 </resources>

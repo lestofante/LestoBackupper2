@@ -27,11 +27,11 @@ import java.util.concurrent.Executors;
 
 public class HomeFragment extends Fragment {
 
-    private FragmentHomeBinding binding;
-    private FileAdapter fileAdapter = new FileAdapter(new ArrayList<>());
+    private FileAdapter fileAdapter;
 
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        //HomeViewModel homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
+        fileAdapter = new FileAdapter(getActivity(), new ArrayList<>());
+
         View rootView = inflater.inflate(R.layout.fragment_home, container, false);
 
         RecyclerView recyclerView = rootView.findViewById(R.id.ListOfFiles);
@@ -47,29 +47,25 @@ public class HomeFragment extends Fragment {
 
         Log.d(Constants.LESTO, "reloading RecyclerView for HomeFragment creation");
 
-        Log.d(Constants.LESTO, "adapter set");
-
-//        FileItem test[] = {
-//                new FileItem(0, "0", "0", 0, "0", false, false, false),
-//                new FileItem(1, "1", "0", 0, "0", false, false, false),
-//                new FileItem(2, "2", "0", 0, "0", false, false, false),
-//                new FileItem(3, "3", "0", 0, "0", false, false, false),
-//                new FileItem(4, "4", "0", 0, "0", false, false, false),
-//                new FileItem(5, "5", "0", 0, "0", false, false, false),
-//        };
-
         Executors.newSingleThreadExecutor().execute(() -> {
             Log.d(Constants.LESTO, "Getting updated file list");
-            List<FileItem> files = Actions.localUpdatedFileList(getContext());
-            Log.d(Constants.LESTO, "Setting the file list to the view");
-            fileAdapter.setData(files);
-            Log.d(Constants.LESTO, "reloading RecyclerView END");
+            {
+                long time = System.currentTimeMillis();
+                List<FileItem> files = Actions.databaseFileList(getContext());
+                Log.d(Constants.LESTO, "Getting file list from DB took: " + (System.currentTimeMillis() - time) + " for files " + files.size());
+                fileAdapter.setData(files);
+            }
+            {
+                long time = System.currentTimeMillis();
+                List<FileItem> files = Actions.localUpdatedFileList(getContext());
+                Log.d(Constants.LESTO, "Getting updated file list took: " + (System.currentTimeMillis() - time) + " for files " + files.size());
+//                fileAdapter.setData(files);
+            }
         });
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        binding = null;
     }
 }
