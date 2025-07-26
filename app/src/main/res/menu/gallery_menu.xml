@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/add_to_cloud"
+        android:title="Add to Cloud" />
+    <item
+        android:id="@+id/remove_from_cloud"
+        android:title="Remove from cloud" />
+    <item
+        android:id="@+id/remove_from_local"
+        android:title="Remove from local" />
+    <item
+        android:id="@+id/add_to_local"
+        android:title="Add to local" />
+</menu>

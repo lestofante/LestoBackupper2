@@ -1,6 +1,7 @@
 package com.lesto.lestobackupper.data;
 
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
@@ -10,10 +11,12 @@ import android.provider.OpenableColumns;
 import android.util.Log;
 
 
+import androidx.documentfile.provider.DocumentFile;
 import androidx.room.MapColumn;
 
 import com.lesto.lestobackupper.Constants;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -81,9 +84,7 @@ public class Actions {
                 MediaStore.MediaColumns.DISPLAY_NAME,
         };
 
-        // Query the media store for audio files
         Cursor cursor = contentResolver.query(currentUri, projection, null, null, null);
-
         List<FileItem> lista = new ArrayList<FileItem>();
         if (cursor != null && cursor.moveToFirst()) {
             do {
@@ -94,7 +95,7 @@ public class Actions {
 
                 // Log the retrieved information
                 //Log.d(Constants.LESTO, "ID: " + id + " " + fileName + " " + filePath);
-                lista.add(new FileItem(id, fileName, currentUri.toString(), filePath, "", 0, "", true, true, false));
+                lista.add(new FileItem(id, fileName, currentUri.toString(), filePath, "", 0, "", true, true, false, true));
 
             } while (cursor.moveToNext());
 
@@ -149,6 +150,7 @@ public class Actions {
     }
 
     public static List<FileItem> databaseFileList(Context context) {
+        //AppDatabase.getInstance(context).clearAllTables();
         FileDatabase db = AppDatabase.getInstance(context).fileDao();
         return new ArrayList<>(db.getAll().values());
     }
@@ -156,6 +158,43 @@ public class Actions {
     public static Map<Long, FileItem> databaseFile(Context context) {
         FileDatabase db = AppDatabase.getInstance(context).fileDao();
         return db.getAll();
+    }
+
+    public static void listFolder(Context context, DocumentFile file, List<FileItem> fileList){
+
+        //DocumentFile fileOnDisk = DocumentFile.fromTreeUri(context, treeUri);
+
+
+        if (file != null){
+            if (file.isDirectory()) {
+                for (DocumentFile subfile : file.listFiles()) {
+                    if (subfile.isFile()) {
+                        Log.d("File", "\tFile Name: " + subfile.getName());
+
+                        // Log the retrieved information
+                        //Log.d(Constants.LESTO, "ID: " + id + " " + fileName + " " + filePath);
+                        fileList.add(new FileItem(subfile.getUri().toString().hashCode(), subfile.getName(), subfile.getUri().toString(), "", "", 0, "", true, true, false, true));
+                    }
+                    if (subfile.isDirectory()) {
+                        // RECURSE!
+                        String a = subfile.getUri().toString();
+                        String b = file.getUri().toString();
+                        if (!a.equals(b)) {
+                            listFolder(context, subfile, fileList);
+                        } else {
+                            //weird duplicate case
+                        }
+                    }
+                }
+            }
+            if (file.isFile()) {
+                Log.d("File", "\tFile Name: " + file.getName());
+
+                // Log the retrieved information
+                //Log.d(Constants.LESTO, "ID: " + id + " " + fileName + " " + filePath);
+                fileList.add(new FileItem(file.getUri().toString().hashCode(), file.getName(), file.getUri().toString(), "", "", 0, "", true, true, false, true));
+            }
+        }
     }
 
     public static List<FileItem> localUpdatedFileList(Context context) {
@@ -167,7 +206,25 @@ public class Actions {
 
         ArrayList<FileItem> complete = new ArrayList<>();
         ArrayList<FileItem> to_add = new ArrayList<>();
-        Log.d(Constants.LESTO, "localUpdatedFileList Find new files missing in db");
+        Log.d(Constants.LESTO, "localUpdatedFileList Find new files missing in db " + db.getAllFolder().size());
+
+        for (FolderItem folder : db.getAllFolder()){
+            Log.d("File", "FolderItem: " + folder.localUri);
+            Uri treeUri = Uri.parse(folder.localUri);
+            //DocumentFile fileOnDisk = DocumentFile.fromTreeUri(context, treeUri);
+
+            ArrayList<FileItem> tmp = new ArrayList<>();
+            DocumentFile fileOnDisk = DocumentFile.fromTreeUri(context, treeUri);
+            listFolder(context, fileOnDisk, tmp);
+            for (FileItem i: tmp){
+                FileItem db_item = files.remove(i.id);
+                if (db_item == null){
+                    to_add.add(i);
+                }
+                complete.add(i);
+            }
+        }
+/*
         for (FileItem i : Actions.get_file_list(context.getContentResolver(), Actions.ALL_IMAGES)){
             FileItem db_item = files.remove(i.id);
             if (db_item == null){
@@ -175,7 +232,7 @@ public class Actions {
             }
             complete.add(i);
         }
-
+*/
         Log.d(Constants.LESTO, "localUpdatedFileList Save new files in db, found: " + to_add.size());
 
         db.insertAll(to_add);

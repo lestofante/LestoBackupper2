@@ -13,7 +13,6 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.Uri;
-import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -24,20 +23,18 @@ import com.lesto.lestobackupper.data.Actions;
 import com.lesto.lestobackupper.data.FileItem;
 import com.lesto.lestobackupper.proto.FileDescription;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -51,10 +48,10 @@ public class BackupTask extends Service {
     private static final int NOTIFICATION_ID = 123;
     MyFileObserver fileObserver = new MyFileObserver(new File("/"));
 
-    private BroadcastReceiver checkBoxReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver checkBoxReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-        if (intent.getAction().equals(Constants.NEW_USER_HANDSHAKE)){
+        if (Objects.equals(intent.getAction(), Constants.NEW_USER_HANDSHAKE)){
             Log.d(Constants.LESTO, "get new credential, reconnecting");
             send_hello();
         }
@@ -64,9 +61,10 @@ public class BackupTask extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        fileObserver.startWatching();
         // Register BroadcastReceiver for CheckBox changes
         IntentFilter filter = new IntentFilter("com.example.checkbox.CHANGE_STATE");
-        registerReceiver(checkBoxReceiver, filter);
+        registerReceiver(checkBoxReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
     }
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -101,12 +99,12 @@ public class BackupTask extends Service {
                             .setSize(len)
                             .setName(f.name)
                             .build();
-                    byte type_and_size[] = new byte[3];
+                    byte[] type_and_size = new byte[3];
                     type_and_size[0] = 0;
                     byte[] data = info.toByteArray();
                     assert (data.length < 32000);
                     type_and_size[1] = (byte) (data.length >> 8);
-                    type_and_size[2] = (byte) (data.length >> 0);
+                    type_and_size[2] = (byte) (data.length);
                     out.write(type_and_size);
                     out.write(info.toByteArray());
                     sent += 1;
@@ -128,7 +126,7 @@ public class BackupTask extends Service {
             try {
                 try_connect();
                 Log.d(Constants.LESTO, "still running");
-                Thread.sleep(1000*3);
+                Thread.sleep(1000*30);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }finally {
@@ -153,11 +151,9 @@ public class BackupTask extends Service {
     }
 
     private Notification createNotification() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel("channel_id", "Channel Name", NotificationManager.IMPORTANCE_DEFAULT);
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
-        }
+        NotificationChannel channel = new NotificationChannel("channel_id", "Channel Name", NotificationManager.IMPORTANCE_DEFAULT);
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, "channel_id")
                 .setContentTitle("Foreground Service")
@@ -175,6 +171,7 @@ public class BackupTask extends Service {
         Network activeNetwork = cm.getActiveNetwork();
         NetworkCapabilities networkCapabilities = cm.getNetworkCapabilities(activeNetwork);
 
+        assert networkCapabilities != null;
         if (networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
             Log.d(Constants.LESTO, "connected to wifi!");
         }
@@ -183,7 +180,12 @@ public class BackupTask extends Service {
             KeyStore keyStore = KeyStore.getInstance(Constants.storeName);
             keyStore.load(null);
             X509Certificate certificate = (X509Certificate)keyStore.getCertificate(Constants.certificateAlias);
-            //Log.d(Constants.LESTO, "keyStore.load found: " + certificate);
+            Log.d(Constants.LESTO, "keyStore.load found: " + certificate);
+
+            if (certificate == null){
+                Log.d(Constants.LESTO, "No certificate");
+                return;
+            }
 
             // Get the Subject Alternative Name (SAN) extension
             Collection<List<?>> altNames = certificate.getSubjectAlternativeNames();
@@ -206,7 +208,7 @@ public class BackupTask extends Service {
                 Log.d(Constants.LESTO, "No Subject Alternative Name (SAN) extension found");
             }
 
-            if (hostnames.size() == 0){
+            if (hostnames.isEmpty()){
                 Log.d(Constants.LESTO, "No hostname");
                 return;
             }
@@ -224,7 +226,7 @@ public class BackupTask extends Service {
 
             Log.d(Constants.LESTO, "connecting");
             for (String hostname : hostnames) {
-                Log.d(Constants.LESTO, "connectiong to " + hostname);
+                Log.d(Constants.LESTO, "connecting to " + hostname);
                 try (SSLSocket socket = (SSLSocket) sslSocketFactory.createSocket(hostname, 4443)) {
                     socket.setSoTimeout(1000); // 1000 ms timeout
                     socket.setKeepAlive(true); // keep alive
@@ -245,11 +247,13 @@ public class BackupTask extends Service {
                         }
                     }
                 }catch (Exception e) {
+                    e.printStackTrace();
                     Log.e(Constants.LESTO, e.toString());
                 }
                 Log.d(Constants.LESTO, "disconnected from " + hostname);
             }
         } catch (Exception e) {
+            e.printStackTrace();
             Log.e(Constants.LESTO, e.toString());
         }
 

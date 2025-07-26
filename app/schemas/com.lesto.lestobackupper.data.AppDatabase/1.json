@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "a12ab89b6cc4e7bebaf5ec9ed88642d1",
+    "identityHash": "52757185ff5dff859d3b94c3e91ab9fa",
     "entities": [
       {
         "tableName": "FileItem",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT, `mediastoreUri` TEXT, `localUri` TEXT, `remoteUri` TEXT, `hash` TEXT, `last_update` INTEGER NOT NULL, `should_backup` INTEGER NOT NULL, `is_remote` INTEGER NOT NULL, `is_local` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT, `mediastoreUri` TEXT, `localUri` TEXT, `remoteUri` TEXT, `hash` TEXT, `last_update` INTEGER NOT NULL, `should_backup` INTEGER NOT NULL, `is_remote` INTEGER NOT NULL, `is_local` INTEGER NOT NULL, `should_download` INTEGER NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -67,6 +67,12 @@
             "columnName": "is_local",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "should_download",
+            "columnName": "should_download",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -102,7 +108,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a12ab89b6cc4e7bebaf5ec9ed88642d1')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '52757185ff5dff859d3b94c3e91ab9fa')"
     ]
   }
 }

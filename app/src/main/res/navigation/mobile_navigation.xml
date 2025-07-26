@@ -18,7 +18,7 @@
         tools:layout="@layout/fragment_gallery" />
 
     <fragment
-        android:id="@+id/nav_slideshow"
+        android:id="@+id/nav_cloud"
         android:name="com.lesto.lestobackupper.ui.cloud.CloudFragment"
         android:label="@string/menu_slideshow"
         tools:layout="@layout/fragment_cloud" />
@@ -26,6 +26,11 @@
     <fragment
         android:id="@+id/nav_folder"
         android:name="com.lesto.lestobackupper.ui.folder.FolderManager"
+        android:label="@string/menu_slideshow"
+        tools:layout="@layout/fragment_folder_manager" />
+    <fragment
+        android:id="@+id/nav_fullscreen"
+        android:name="com.lesto.lestobackupper.ui.image.FullscreenImageFragment"
         android:label="@string/menu_slideshow"
         tools:layout="@layout/fragment_folder_manager" />
 </navigation>

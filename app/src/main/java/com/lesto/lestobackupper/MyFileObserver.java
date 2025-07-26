@@ -8,7 +8,7 @@ import java.util.concurrent.Executor;
 
 public class MyFileObserver extends FileObserver {
 
-    private File path;
+    private final File path;
 
     public MyFileObserver(File path) {
         super(path);

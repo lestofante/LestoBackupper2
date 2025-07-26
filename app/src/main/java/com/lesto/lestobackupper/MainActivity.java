@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -19,18 +20,18 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.navigation.NavigationView;
 import com.lesto.lestobackupper.databinding.ActivityMainBinding;
+import com.lesto.lestobackupper.ui.image.FullscreenImageFragment;
 
 public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration mAppBarConfiguration;
-    private ActivityMainBinding binding;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(Constants.LESTO, "CIAO");
 
-        binding = ActivityMainBinding.inflate(getLayoutInflater());
+        ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         setSupportActionBar(binding.appBarMain.toolbar);
@@ -85,7 +86,7 @@ public class MainActivity extends AppCompatActivity {
         ActivityResultLauncher<String[]> requestPermissionLauncher = registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), permissions -> {
             boolean allPermissionsGranted = true;
             for (String permission : permissions.keySet()) {
-                if (!permissions.get(permission)) {
+                if (Boolean.FALSE.equals(permissions.get(permission))) {
                     allPermissionsGranted = false;
                     Log.d(Constants.LESTO, "Permission " + permission + " KO");
                     break;
@@ -103,12 +104,16 @@ public class MainActivity extends AppCompatActivity {
         requestPermissionLauncher.launch(permissions_list);
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
-    }
+//    @Override
+//    public boolean onCreateOptionsMenu(Menu menu) {
+//        Fragment current = getSupportFragmentManager().findFragmentById(R.id.nav_host_fragment_content_main);
+//        if (current instanceof FullscreenImageFragment) {
+//            // Skip inflating menu here
+//            return false;
+//        }
+//        getMenuInflater().inflate(R.menu.main, menu);
+//        return true;
+//    }
 
     @Override
     public boolean onSupportNavigateUp() {

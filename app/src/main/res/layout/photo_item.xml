@@ -1,0 +1,61 @@
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+
+    android:id="@+id/photo_container"
+    android:background="@drawable/photo_border"
+    android:padding="4dp" >
+
+    <!-- Photo thumbnail -->
+    <ImageView
+        android:id="@+id/imageThumbnail"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+         />
+
+    <!-- Overlay icons container -->
+    <LinearLayout
+        android:id="@+id/iconOverlay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_gravity="bottom|end"
+        android:padding="4dp"
+        android:gravity="end">
+
+        <ImageView
+            android:id="@+id/iconCloudDone"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@string/cloud_done"
+            android:src="@drawable/ic_cloud_done"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/iconCloudOff"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@string/cloud_off"
+            android:src="@drawable/ic_cloud_off"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/iconCloudUpload"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@string/cloud_upload"
+            android:src="@drawable/ic_cloud_upload"
+            android:visibility="gone" />
+
+        <ImageView
+            android:id="@+id/iconLocal"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:contentDescription="@string/local_copy"
+            android:src="@drawable/ic_local"
+            android:visibility="gone" />
+
+    </LinearLayout>
+</FrameLayout>

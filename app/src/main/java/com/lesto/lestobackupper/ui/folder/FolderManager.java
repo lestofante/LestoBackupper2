@@ -8,7 +8,6 @@ import android.os.Bundle;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -20,17 +19,12 @@ import android.view.ViewGroup;
 import android.widget.Button;
 
 import com.lesto.lestobackupper.Constants;
-import com.lesto.lestobackupper.FileAdapter;
 import com.lesto.lestobackupper.R;
-import com.lesto.lestobackupper.data.Actions;
 import com.lesto.lestobackupper.data.AppDatabase;
 import com.lesto.lestobackupper.data.FileDatabase;
-import com.lesto.lestobackupper.data.FileItem;
 import com.lesto.lestobackupper.data.FolderItem;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Executors;
 
 /**
@@ -48,9 +42,18 @@ public class FolderManager extends Fragment {
         View rootView = inflater.inflate(R.layout.fragment_folder_manager, container, false);
 
         Button add_folder = rootView.findViewById(R.id.btn_add_folder);
+        //add_folder.setOnClickListener(view -> {
+//            openDocumentTreeLauncher.launch(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE));
+  //      });
         add_folder.setOnClickListener(view -> {
-            openDocumentTreeLauncher.launch(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE));
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
+                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
+            openDocumentTreeLauncher.launch(intent);
         });
+
 
         RecyclerView recyclerView = rootView.findViewById(R.id.list_of_folder);
         recyclerView.setLayoutManager(new LinearLayoutManager(rootView.getContext())); // Or use GridLayoutManager for grid layout
@@ -62,13 +65,15 @@ public class FolderManager extends Fragment {
         return rootView;
     }
 
-    private ActivityResultLauncher<Intent> openDocumentTreeLauncher = registerForActivityResult(
+    private final ActivityResultLauncher<Intent> openDocumentTreeLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
             result -> {
                 if (result.getResultCode() == Activity.RESULT_OK) {
                     Intent data = result.getData();
                     if (data != null) {
                         Uri treeUri = data.getData();
+                        final int takeFlags = data.getFlags()  & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                        requireContext().getContentResolver().takePersistableUriPermission(treeUri, takeFlags);
                         addFolder(treeUri);
                     }
                 }
@@ -81,6 +86,7 @@ public class FolderManager extends Fragment {
                 updateList();
             }catch(SQLiteConstraintException e){
                 //we do not care, the folder already exist
+                e.printStackTrace();
             }
         });
     }
