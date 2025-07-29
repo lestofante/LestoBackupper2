@@ -5,22 +5,24 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
-import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.Uri;
 import android.os.IBinder;
 import android.util.Log;
+import android.util.Pair;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.lesto.lestobackupper.data.Actions;
+import com.lesto.lestobackupper.data.AppDatabase;
+import com.lesto.lestobackupper.data.FileDatabase;
 import com.lesto.lestobackupper.data.FileItem;
+import com.lesto.lestobackupper.data.UniqueFileId;
 import com.lesto.lestobackupper.proto.FileDescription;
 
 import java.io.File;
@@ -66,6 +68,7 @@ public class BackupTask extends Service {
         IntentFilter filter = new IntentFilter("com.example.checkbox.CHANGE_STATE");
         registerReceiver(checkBoxReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
     }
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Create a notification to display the foreground service
@@ -82,42 +85,43 @@ public class BackupTask extends Service {
     }
 
     void syncFileList(OutputStream out){
-        List<FileItem> files = Actions.localUpdatedFileList(this);
-        int sent = 0;
-        Log.d(Constants.LESTO, "sent start");
-        for (FileItem f : files){
-            if (f.should_backup){
-                try {
-                    if (f.hash.isEmpty()) {
-                        f = new FileItem(f, Actions.getFileHash(getContentResolver(), ContentUris.withAppendedId(Uri.parse(f.mediastoreUri), f.id)));
-                        Actions.update(this, f);
-                    }
-                    long len = Actions.getFileSize(getContentResolver(), ContentUris.withAppendedId(Uri.parse(f.mediastoreUri), f.id));
-                    FileDescription.FileInfo info = FileDescription.FileInfo.newBuilder()
-                            .setId(f.id)
-                            .setHash(f.hash)
-                            .setSize(len)
-                            .setName(f.name)
-                            .build();
-                    byte[] type_and_size = new byte[3];
-                    type_and_size[0] = 0;
-                    byte[] data = info.toByteArray();
-                    assert (data.length < 32000);
-                    type_and_size[1] = (byte) (data.length >> 8);
-                    type_and_size[2] = (byte) (data.length);
-                    out.write(type_and_size);
-                    out.write(info.toByteArray());
-                    sent += 1;
-                }catch (SocketException e) {
-                    Log.w(Constants.LESTO, "Disconnected");
-                    return;
-                }catch (IOException | NoSuchAlgorithmException e){
-                    e.printStackTrace();
-                    Log.w(Constants.LESTO, "failed to hash/size " + f.name + ", ignoring");
-                }
-            }
-        }
-        Log.d(Constants.LESTO, "sent " + sent);
+//        List<FileItem> files = Actions.localUpdatedFileList(this);
+//        int sent = 0;
+//        Log.d(Constants.LESTO, "sent start");
+//        for (FileItem f : files){
+//            if (f.should_backup){
+//                try {
+//                    //FileDatabase db = AppDatabase.getInstance(this).fileDao();
+//                    //UniqueFileId id_hash = Actions.getFileUniqueId(db, getContentResolver(), f.localUri);
+//                    //if (id_hash != null) { //file already in DB
+//
+//                        long len = Actions.getFileSize(getContentResolver(), f.localUri);
+//
+//                        FileDescription.FileInfo info = FileDescription.FileInfo.newBuilder()
+//                                .setId(f.gerLocalId())//FIXME: this should be the remote ID
+//                                .setSize(len)
+//                                .setName(f.name)
+//                                .build();
+//                        byte[] type_and_size = new byte[3];
+//                        type_and_size[0] = 0;
+//                        byte[] data = info.toByteArray();
+//                        assert (data.length < 32000);
+//                        type_and_size[1] = (byte) (data.length >> 8);
+//                        type_and_size[2] = (byte) (data.length);
+//                        out.write(type_and_size);
+//                        out.write(info.toByteArray());
+//                        sent += 1;
+//                    //}
+//                }catch (SocketException e) {
+//                    Log.w(Constants.LESTO, "Disconnected");
+//                    return;
+//                }catch (IOException e){
+//                    e.printStackTrace();
+//                    Log.w(Constants.LESTO, "failed to hash/size " + f.name + ", ignoring");
+//                }
+//            }
+//        }
+//        Log.d(Constants.LESTO, "sent " + sent);
     }
 
     void send_hello(){
@@ -145,13 +149,12 @@ public class BackupTask extends Service {
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
-
         Log.d(Constants.LESTO, "onBind called");
         return null;
     }
 
     private Notification createNotification() {
-        NotificationChannel channel = new NotificationChannel("channel_id", "Channel Name", NotificationManager.IMPORTANCE_DEFAULT);
+        NotificationChannel channel = new NotificationChannel("channel_id", "Channel Name", NotificationManager.IMPORTANCE_LOW);
         NotificationManager notificationManager = getSystemService(NotificationManager.class);
         notificationManager.createNotificationChannel(channel);
 

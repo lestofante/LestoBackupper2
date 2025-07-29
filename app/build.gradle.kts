@@ -35,8 +35,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         viewBinding = true
@@ -54,14 +54,10 @@ dependencies {
     implementation("androidx.navigation:navigation-ui:2.9.2")
 
     implementation("androidx.room:room-runtime:2.7.2")
+    annotationProcessor("androidx.room:room-compiler:2.7.2")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-android:2.9.2")
-    implementation("androidx.paging:paging-common-android:3.3.6")
-    implementation("androidx.paging:paging-runtime:3.3.6")
-    implementation("androidx.room:room-paging:2.7.2")
-    annotationProcessor("androidx.room:room-compiler:2.7.2")
     implementation("androidx.lifecycle:lifecycle-reactivestreams:2.9.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive:1.10.2")
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

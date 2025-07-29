@@ -2,10 +2,7 @@ package com.lesto.lestobackupper.ui.gallery;
 
 import android.content.Context;
 import android.content.res.Resources;
-import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Bundle;
-import android.util.Size;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,27 +10,23 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.navigation.NavController;
-import androidx.paging.PagingData;
-import androidx.paging.PagingDataAdapter;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.lesto.lestobackupper.R;
-import com.lesto.lestobackupper.data.FileItem;
-import com.lesto.lestobackupper.data.FileItemDiffCallback;
+import com.lesto.lestobackupper.data.db.FileItem;
+import com.lesto.lestobackupper.data.db.FileItemDiffCallback;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class GalleryAdapter extends PagingDataAdapter<FileItem, GalleryAdapter.PhotoViewHolder> {
+public class GalleryAdapter extends ListAdapter<FileItem, GalleryAdapter.PhotoViewHolder> {
 
     private final int element_per_row;
     private final NavController navController;
-
-    private List<FileItem> selectedUris = new ArrayList<>();
     private Set<Integer> selectedUrisPosition = new TreeSet<>();
 
     public GalleryAdapter(int element_per_row, NavController navController) {
@@ -62,81 +55,68 @@ public class GalleryAdapter extends PagingDataAdapter<FileItem, GalleryAdapter.P
         FileItem photo = getItem(position);
 
         assert photo != null;
-        Uri uri = Uri.parse(photo.mediastoreUri);
-//        try {
-//            Bitmap thumbnail = context.getContentResolver().loadThumbnail(
-//                    uri,
-//                    new Size(size, size),
-//                    null
-//            );
-//
-//            holder.thumbnail.setImageBitmap(thumbnail);
-
-            Glide.with(holder.thumbnail.getContext())
-                    .load(uri)
-                    .override(size, size)
-                    .centerCrop()
-                    .placeholder(R.drawable.ic_missing)
-                    .into(holder.thumbnail);
-//        } catch (IOException e) {
- //           e.printStackTrace();
-  //          holder.thumbnail.setImageResource(R.drawable.ic_missing);
-   //     }
+//        Uri uri = Uri.parse(photo.mediastoreUri);
+        Glide.with(context)
+                .load(photo.localUri)
+                .placeholder(R.drawable.ic_missing)
+                .override(size, size)
+                .centerCrop()
+                .into(holder.thumbnail);
 
         holder.itemView.setSelected(selectedUrisPosition.contains(position));
 
         holder.itemView.setOnClickListener(v -> {
-            if (!selectedUris.isEmpty()) {
+            if (!selectedUrisPosition.isEmpty()) {
                 toggleSelection(position, photo);
             }else{
                 Bundle bundle = new Bundle();
-                bundle.putParcelable("image_uri", uri);
+                bundle.putParcelable("image_uri", photo.localUri);
                 navController.navigate(R.id.nav_fullscreen, bundle);
             }
         });
 
         holder.itemView.setOnLongClickListener(v -> {
-            if (selectedUris.isEmpty()) {
+            if (selectedUrisPosition.isEmpty()) {
                 toggleSelection(position, photo);
                 return true;
             }
             return false;
         });
 
-        holder.cloudDone.setVisibility(photo.is_remote ? View.VISIBLE : View.GONE);
-        holder.cloudUpload.setVisibility(!photo.is_remote && photo.should_backup ? View.VISIBLE : View.GONE);
+        holder.cloudDone.setVisibility(photo.remoteUri != null ? View.VISIBLE : View.GONE);
+        holder.cloudUpload.setVisibility(photo.remoteUri == null && photo.should_backup ? View.VISIBLE : View.GONE);
         holder.cloudOff.setVisibility(!photo.should_backup ? View.VISIBLE : View.GONE);
-        holder.iconLocal.setVisibility(photo.is_local ? View.VISIBLE : View.GONE);
+        holder.iconLocal.setVisibility(photo.localUri != null ? View.VISIBLE : View.GONE);
     }
 
     private void toggleSelection(int position, FileItem fileItem) {
 
-        if (!selectedUrisPosition.add(position)) { //try adding, if return false is already present, so delete instead
+        if (!selectedUrisPosition.add(position)) { //if add return false item already exist; in this case, is a deselect, so remove it
             selectedUrisPosition.remove(position);
         }
 
-        if (selectedUris.contains(fileItem)) {
-            selectedUris.remove(fileItem);
-        } else {
-            selectedUris.add(fileItem);
-        }
         notifyItemChanged(position);
     }
 
     public List<FileItem> getItemSelected() {
-        return selectedUris;
+        List<FileItem> selectedItems = new ArrayList<>(selectedUrisPosition.size());
+        for (int pos : selectedUrisPosition) {
+            if (pos >= 0 && pos < getItemCount()) {
+                FileItem item = getItem(pos);
+                if (item != null) {
+                    selectedItems.add(item);
+                }
+            }
+        }
+        return selectedItems;
     }
 
     public void resetItemSelected() {
-        //List<FileItem> changed = selectedUris;
-        //selectedUris = new ArrayList<>();
-        //submitList(changed);
-        //notifyDataSetChanged();
-        selectedUris.clear();
-        for (int pos : selectedUrisPosition) {
+        Set<Integer> old = selectedUrisPosition;
+        selectedUrisPosition = new TreeSet<>();
+        for (int pos : old){
             notifyItemChanged(pos);
         }
-        selectedUrisPosition.clear();
     }
 
     public static class PhotoViewHolder extends RecyclerView.ViewHolder {

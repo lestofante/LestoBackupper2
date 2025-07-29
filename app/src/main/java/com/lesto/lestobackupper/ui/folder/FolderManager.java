@@ -20,9 +20,9 @@ import android.widget.Button;
 
 import com.lesto.lestobackupper.Constants;
 import com.lesto.lestobackupper.R;
-import com.lesto.lestobackupper.data.AppDatabase;
-import com.lesto.lestobackupper.data.FileDatabase;
-import com.lesto.lestobackupper.data.FolderItem;
+import com.lesto.lestobackupper.data.db.AppDatabase;
+import com.lesto.lestobackupper.data.db.FileDatabase;
+import com.lesto.lestobackupper.data.db.FolderItem;
 
 import java.util.ArrayList;
 import java.util.concurrent.Executors;
@@ -72,8 +72,8 @@ public class FolderManager extends Fragment {
                     Intent data = result.getData();
                     if (data != null) {
                         Uri treeUri = data.getData();
-                        final int takeFlags = data.getFlags()  & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                        requireContext().getContentResolver().takePersistableUriPermission(treeUri, takeFlags);
+                        assert treeUri != null;
+                        requireContext().getContentResolver().takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                         addFolder(treeUri);
                     }
                 }

@@ -3,13 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mobile_navigation"
-    app:startDestination="@+id/nav_home">
-
-    <fragment
-        android:id="@+id/nav_home"
-        android:name="com.lesto.lestobackupper.ui.home.HomeFragment"
-        android:label="@string/menu_home"
-        tools:layout="@layout/fragment_home" />
+    app:startDestination="@+id/nav_gallery">
 
     <fragment
         android:id="@+id/nav_gallery"
@@ -20,17 +14,17 @@
     <fragment
         android:id="@+id/nav_cloud"
         android:name="com.lesto.lestobackupper.ui.cloud.CloudFragment"
-        android:label="@string/menu_slideshow"
+        android:label="@string/menu_cloud"
         tools:layout="@layout/fragment_cloud" />
 
     <fragment
         android:id="@+id/nav_folder"
         android:name="com.lesto.lestobackupper.ui.folder.FolderManager"
-        android:label="@string/menu_slideshow"
+        android:label="@string/menu_cloud"
         tools:layout="@layout/fragment_folder_manager" />
     <fragment
         android:id="@+id/nav_fullscreen"
         android:name="com.lesto.lestobackupper.ui.image.FullscreenImageFragment"
-        android:label="@string/menu_slideshow"
+        android:label="fullscreen"
         tools:layout="@layout/fragment_folder_manager" />
 </navigation>

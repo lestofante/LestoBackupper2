@@ -26,6 +26,7 @@ import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.lesto.lestobackupper.Constants;
 import com.lesto.lestobackupper.R;
 import com.lesto.lestobackupper.databinding.FragmentCloudBinding;
@@ -65,7 +66,7 @@ public class CloudFragment extends Fragment {
             //processDirectoryUri();
         });
 
-        TextView v = root.findViewById(R.id.CloudProvider);
+        TextView v = root.findViewById(R.id.cloudSelector);
 
         qrScannerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -223,8 +224,11 @@ public class CloudFragment extends Fragment {
         // Launch QR code scanning app
         Intent intent = new Intent("com.google.zxing.client.android.SCAN");
         intent.putExtra("SCAN_MODE", "QR_CODE_MODE");
-        qrScannerLauncher.launch(intent);
-
+        try {
+            qrScannerLauncher.launch(intent);
+        }catch (android.content.ActivityNotFoundException e){
+            Snackbar.make(getView(), "Could not find a QR code reader", Snackbar.LENGTH_SHORT).show();
+        }
     }
 
     public static void printDnsServers(Context context) {

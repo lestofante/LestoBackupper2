@@ -16,9 +16,9 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.lesto.lestobackupper.Constants;
 import com.lesto.lestobackupper.R;
-import com.lesto.lestobackupper.data.AppDatabase;
-import com.lesto.lestobackupper.data.FileDatabase;
-import com.lesto.lestobackupper.data.FolderItem;
+import com.lesto.lestobackupper.data.db.AppDatabase;
+import com.lesto.lestobackupper.data.db.FileDatabase;
+import com.lesto.lestobackupper.data.db.FolderItem;
 
 import java.util.List;
 import java.util.concurrent.Executors;

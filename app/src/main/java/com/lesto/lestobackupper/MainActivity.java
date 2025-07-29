@@ -19,8 +19,13 @@ import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
 
 import com.google.android.material.navigation.NavigationView;
+import com.lesto.lestobackupper.data.Actions;
+import com.lesto.lestobackupper.data.db.AppDatabase;
 import com.lesto.lestobackupper.databinding.ActivityMainBinding;
 import com.lesto.lestobackupper.ui.image.FullscreenImageFragment;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -29,7 +34,28 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(() -> {
+                    AppDatabase db = AppDatabase.getInstance(this);
+                    //db.fileDao().clearFolders();
+                    db.fileDao().clearFiles();
+                });
+
+
         Log.d(Constants.LESTO, "CIAO");
+
+        ExecutorService executorService2 = Executors.newSingleThreadExecutor();
+        executorService2.execute(() -> {
+            while (true) {
+                try {
+                    Actions.localUpdatedFileList(this);
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
 
         ActivityMainBinding binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -40,7 +66,7 @@ public class MainActivity extends AppCompatActivity {
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         mAppBarConfiguration = new AppBarConfiguration.Builder(
-                R.id.nav_home, R.id.nav_gallery, R.id.nav_slideshow, R.id.nav_folder)
+                R.id.nav_gallery, R.id.nav_cloud, R.id.nav_folder)
                 .setOpenableLayout(drawer)
                 .build();
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);

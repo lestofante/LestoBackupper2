@@ -2,6 +2,7 @@ package com.lesto.lestobackupper.ui.gallery;
 
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -21,8 +22,7 @@ import androidx.navigation.fragment.NavHostFragment;
 import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.lesto.lestobackupper.R;
-import com.lesto.lestobackupper.data.AppDatabase;
-import com.lesto.lestobackupper.data.FileItem;
+import com.lesto.lestobackupper.data.db.FileItem;
 import com.lesto.lestobackupper.databinding.FragmentGalleryBinding;
 
 import java.util.ArrayList;
@@ -100,8 +100,9 @@ public class GalleryFragment extends Fragment {
 
         // Setup ViewModel
         GalleryViewModel viewModel = new ViewModelProvider(this).get(GalleryViewModel.class);
-        viewModel.getPhotoPagingData().observe(getViewLifecycleOwner(), newPhotos -> {
-            adapter.submitData(getViewLifecycleOwner().getLifecycle(), newPhotos);
+        viewModel.getPhotoList().observe(getViewLifecycleOwner(), newPhotos -> {
+            adapter.submitList(newPhotos);
+            Log.d("asd", "list has been updated, new size: "+newPhotos.size());
         });
     }
 
