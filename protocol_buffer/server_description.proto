@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option java_package = "com.lesto.lestobackupper.proto";
+
+message ServerInfo {
+  string name = 1;
+  string server = 2;
+  string username = 3;
+  string password = 4;
+}
+
+message ServerInfoList {
+  repeated ServerInfo servers = 1;
+}

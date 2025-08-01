@@ -20,11 +20,14 @@ import java.util.Map;
 @Dao
 public interface FileDatabase {
 
-    @Query("SELECT localId as IDD, * FROM fileitem")
-    Map<@MapColumn(columnName = "IDD")Long, FileItem> getAll();
+//    @Query("SELECT localId as IDD, * FROM fileitem")
+//    Map<@MapColumn(columnName = "IDD")Long, FileItem> getAll();
 
-    @Query("SELECT md5 || sha1 || collisionId as ID1, * FROM fileitem")
-    Map<@MapColumn(columnName = "ID1")String, FileItem> getAllByRemoteId();
+//    @Query("SELECT md5 || sha256 || collisionId as ID1, * FROM fileitem")
+//    Map<@MapColumn(columnName = "ID1")String, FileItem> getAllByRemoteId();
+
+    @Query("SELECT * FROM fileitem")
+    List<FileItem> getAllByRemoteId();
 
     @Query("SELECT * FROM fileitem")
     LiveData<List<FileItem>> getAllFiles();
@@ -32,8 +35,11 @@ public interface FileDatabase {
     @Query("SELECT * FROM fileitem WHERE localId = :id")
     FileItem getFile(long id);
 
-    @Query("SELECT * FROM fileitem WHERE md5 = :md5 and sha1 = :sha1")
-    List<FileItem> getFileByHash(@NonNull String md5, @NonNull String sha1);
+    @Query("SELECT * FROM fileitem WHERE md5 = :md5 and sha256 = :sha256")
+    List<FileItem> getFileByHash(@NonNull String md5, @NonNull String sha256);
+
+    @Query("SELECT * FROM fileitem WHERE md5 = :md5 and sha256 = :sha256 and collisionId = :collisionId")
+    List<FileItem> getFileByUniqueId(@NonNull String md5, @NonNull String sha256, long collisionId);
 
     @Query("SELECT * FROM folderitem")
     List<FolderItem> getAllFolder();

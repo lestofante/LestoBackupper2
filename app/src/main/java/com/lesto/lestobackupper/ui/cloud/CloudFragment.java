@@ -1,251 +1,193 @@
 package com.lesto.lestobackupper.ui.cloud;
 
-import android.app.Activity;
-import android.content.ContentResolver;
-import android.content.ContentResolver.MimeTypeInfo;
+import android.app.AlertDialog;
 import android.content.Context;
-import android.content.Intent;
-import android.net.ConnectivityManager;
-import android.net.LinkProperties;
-import android.net.Network;
-import android.net.NetworkCapabilities;
-import android.net.Uri;
+import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.provider.DocumentsContract;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Base64;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.MimeTypeMap;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.TextView;
+import android.widget.EditText;
+import android.widget.Spinner;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 
-import com.google.android.material.snackbar.Snackbar;
-import com.lesto.lestobackupper.Constants;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.lesto.lestobackupper.R;
 import com.lesto.lestobackupper.databinding.FragmentCloudBinding;
+import com.lesto.lestobackupper.proto.ServerDescription;
 
-import java.io.ByteArrayInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.net.InetAddress;
-import java.security.KeyStore;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.Executors;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 public class CloudFragment extends Fragment {
-    private static final String NEW_USER_HANDSHAKE = "NEW_USER_HANDSHAKE";
     private FragmentCloudBinding binding;
-    ActivityResultLauncher<Intent> qrScannerLauncher;
+    private final List<ServerDescription.ServerInfo> serversList = new ArrayList<>();
+    private int defaultColor = Color.BLACK;
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        CloudViewModel slideshowViewModel = new ViewModelProvider(this).get(CloudViewModel.class);
 
         binding = FragmentCloudBinding.inflate(inflater, container, false);
         View root = binding.getRoot();
 
-        final TextView textView = binding.textSlideshow;
-        slideshowViewModel.getText().observe(getViewLifecycleOwner(), textView::setText);
+        Spinner spinner = root.findViewById(R.id.cloudSelector);
 
-        Button btn = root.findViewById(R.id.button);
-        btn.setOnClickListener(view -> {
-            Log.d(Constants.LESTO, "string oauth2");
-            // Launch QR code scanning app
-            requestCode();
-            //processDirectoryUri();
-        });
+        EditText editTextName = root.findViewById(R.id.txtName);
+        EditText editTextServer = root.findViewById(R.id.txtServer);
+        EditText editTextUsername = root.findViewById(R.id.txtUsername);
+        EditText editTextPassword = root.findViewById(R.id.txtPassword);
 
-        TextView v = root.findViewById(R.id.cloudSelector);
+        ColorStateList textColors = editTextName.getTextColors();
+        defaultColor = textColors.getDefaultColor();
 
-        qrScannerLauncher = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK) {
-                        Intent data = result.getData();
-                        if (data != null) {
-                            String contents = data.getStringExtra("SCAN_RESULT");
-                            Log.d(Constants.LESTO, "Scanned: " + contents);
-                            // Handle the scanned content here
-                            performHandshake(contents);
-                        }
-                    } else if (result.getResultCode() == Activity.RESULT_CANCELED) {
-                        Log.d(Constants.LESTO, "Scan cancelled");
-                        // Handle cancellation
-                        performHandshake("test");
+        trackChanges(editTextName, "");
+        trackChanges(editTextServer, "");
+        trackChanges(editTextUsername, "");
+        trackChanges(editTextPassword, "");
+
+        Context c = getContext();
+        if (c != null) {
+
+            loadServerList(c, spinner);
+
+            Button btnDel = root.findViewById(R.id.btnDelete);
+            btnDel.setOnClickListener(view -> {
+                int position = spinner.getSelectedItemPosition();
+                if (position < serversList.size()) {
+                    new AlertDialog.Builder(c)
+                        .setTitle("Confirm")
+                        .setMessage("Delete the setup for '"+serversList.get(position).getName()+"'?")
+                        .setPositiveButton("Yes", (dialog, which) -> {
+                            serversList.remove(position);
+                            saveServerList(c);
+                            loadServerList(c, spinner);
+                            spinner.setSelection(position);
+                        })
+                        .setNegativeButton("No", null)
+                        .show();
+                }
+            });
+
+            Button btn = root.findViewById(R.id.button);
+            btn.setOnClickListener(view -> {
+                int position = spinner.getSelectedItemPosition();
+
+                ServerDescription.ServerInfo info = ServerDescription.ServerInfo.newBuilder()
+                    .setName(editTextName.getText().toString())
+                    .setServer(editTextServer.getText().toString())
+                    .setUsername(editTextUsername.getText().toString())
+                    .setPassword(editTextPassword.getText().toString())
+                    .build();
+
+                if (position >= 0 && position < serversList.size()) {
+                    serversList.set(position, info); // same name, replace
+                }else{
+                    serversList.add(info);
+                }
+                saveServerList(c);
+                loadServerList(c, spinner);
+
+                spinner.setSelection(position);
+            });
+
+            spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+
+                    if (position < serversList.size()) {
+                        ServerDescription.ServerInfo selected = serversList.get(position);
+
+                        trackChanges(editTextName, selected.getName());
+                        trackChanges(editTextServer, selected.getServer());
+                        trackChanges(editTextUsername, selected.getUsername());
+                        trackChanges(editTextPassword, selected.getPassword());
+                    }else {
+                        trackChanges(editTextName, "");
+                        trackChanges(editTextServer, "");
+                        trackChanges(editTextUsername, "");
+                        trackChanges(editTextPassword, "");
                     }
-                });
-
+                }
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
+            });
+        }
         return root;
     }
-/*
-    private ActivityResultLauncher<Intent> openDocumentTreeLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    Intent data = result.getData();
-                    if (data != null) {
-                        Uri treeUri = data.getData();
-                        processDirectoryUri(treeUri);
-                    }
-                }
-            });
-*/
-    private ActivityResultLauncher<Intent> createDocumentLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                if (result.getResultCode() == Activity.RESULT_OK) {
-                    Intent data = result.getData();
-                    if (data != null) {
-                        Uri fileUri = data.getData();
-                        // Write backup data to the file
-                        try (OutputStream outputStream = getContext().getContentResolver().openOutputStream(fileUri)) {
-                            outputStream.write("lol".getBytes());
-                            Log.d("BackupApp", "Backup saved successfully to: " + fileUri);
-                        } catch (FileNotFoundException e) {
-                            throw new RuntimeException(e);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                }
-            });
+    private final Map<EditText, TextWatcher> changeWatchers = new HashMap<>();
 
-    // Launch the directory picker using ActivityResultLauncher
-    /*
-    private void launchDirectoryPickerWithLauncher() {
-        openDocumentTreeLauncher.launch(new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE));
-    }
-     */
-
-    // Process the selected directory URI
-    private void processDirectoryUri() {
-        // Get the desired file name and content (e.g., from user input)
-        String fileName = "your_file_name.txt"; // Replace with your desired name
-
-        String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension("txt");
-
-        // Create a SAF intent to create the backup file
-        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT)
-                .setType(mime) // Replace with appropriate MIME type
-                .putExtra(Intent.EXTRA_TITLE, fileName);
-        createDocumentLauncher.launch(intent);
-/*
-        //getActivity().startActivityForResult(intent, 10);
-
-        try {
-            // Grant long-term write access if needed
-            //intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            Uri fileUri = DocumentsContract.createDocument(getContext().getContentResolver(), treeUri, mime, fileName);
-
-
-            //Uri documentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, DocumentsContract.getTreeDocumentId(treeUri));
-
-            // Write backup data to the file
-            try (OutputStream outputStream = getContext().getContentResolver().openOutputStream(fileUri)) {
-                outputStream.write(fileContent.getBytes());
-                Log.d("BackupApp", "Backup saved successfully to: " + fileUri);
-            }
-        } catch (IOException | SecurityException e) {
-            // Handle errors gracefully, provide user feedback
-            Log.e("BackupApp", "Error creating backup file: ", e);
+    private void trackChanges(EditText editText, String originalValue) {
+        TextWatcher oldWatcher = changeWatchers.get(editText);
+        if (oldWatcher != null) {
+            editText.removeTextChangedListener(oldWatcher);
         }
 
-//        // Create the file using ContentResolver
-//        ContentResolver contentResolver = getActivity().getContentResolver();
-//        String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension("txt");
-//        try {
-//            Uri fileUri = DocumentsContract.createDocument(contentResolver, treeUri, mimeType, fileName);
-//            // Write content to the file
-//            try (OutputStream outputStream = contentResolver.openOutputStream(fileUri)) {
-//                outputStream.write(fileContent.getBytes());
-//                Log.d(Constants.LESTO, "File created successfully: " + fileUri);
-//            } catch (IOException e) {
-//                Log.e(Constants.LESTO, "Error creating file: ", e);
-//            }
-//        } catch (FileNotFoundException e) {
-//            throw new RuntimeException(e);
-//        }
+        editText.setText(originalValue);
+        editText.setTextColor(defaultColor);
 
- */
+        TextWatcher newWatcher = new TextWatcher() {
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                boolean changed = !s.toString().equals(originalValue);
+                editText.setTextColor(changed ? Color.RED : defaultColor);}
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void afterTextChanged(Editable s) {}
+        };
+
+        changeWatchers.put(editText, newWatcher);
+        editText.addTextChangedListener(newWatcher);
     }
 
-    private void performHandshake(String certificateString) {
-        Executors.newSingleThreadExecutor().submit(() -> {
+    private void saveServerList(Context c) {
+
+        ServerDescription.ServerInfoList serverList = ServerDescription.ServerInfoList
+                .newBuilder()
+                .addAllServers(serversList)
+                .build();
+
+        byte[] bytes = serverList.toByteArray();
+        String base64 = Base64.encodeToString(bytes, Base64.DEFAULT);
+
+        SharedPreferences prefs = c.getSharedPreferences("Servers", Context.MODE_PRIVATE);
+        prefs.edit().putString("servers", base64).apply();
+    }
+
+    private void loadServerList(Context c, Spinner spinner) {
+        SharedPreferences prefs = c.getSharedPreferences("Servers", Context.MODE_PRIVATE);
+        String base64 = prefs.getString("servers", null);
+        Log.d("loadServerList", "Loading servers");
+        if (base64 != null) {
+            byte[] bytes = Base64.decode(base64, Base64.DEFAULT);
             try {
-//                // Example self-signed certificate string
-//                String certificateString = "-----BEGIN CERTIFICATE-----\n" +
-//                        "MIIBcjCCARmgAwIBAgIUfaFxJsLQjKOGjM9coI0ROpGzP7kwCgYIKoZIzj0EAwIw\n" +
-//                        "ITEfMB0GA1UEAwwWcmNnZW4gc2VsZiBzaWduZWQgY2VydDAgFw03NTAxMDEwMDAw\n" +
-//                        "MDBaGA80MDk2MDEwMTAwMDAwMFowITEfMB0GA1UEAwwWcmNnZW4gc2VsZiBzaWdu\n" +
-//                        "ZWQgY2VydDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABFlLqHPRQl2pI70LBkCH\n" +
-//                        "X3Y/DF8B4lGZBt1NvJzEN+dWMvzSelGjN5HJnZtjEW5DZiSWB9rmkAK41jBIrvS/\n" +
-//                        "Zr+jLTArMCkGA1UdEQQiMCCCE2hlbGxvLndvcmxkLmV4YW1wbGWCCWxvY2FsaG9z\n" +
-//                        "dDAKBggqhkjOPQQDAgNHADBEAiAM9P/S0l8XCe1MDUpCmaCy5jFUTbgai9njlB0Z\n" +
-//                        "oX8F/gIgWLu7IIJ6dIB5oVOq+KRSHLdTWQJfWdnek287YBPKELQ=\n" +
-//                        "-----END CERTIFICATE-----";
-
-                Log.d(Constants.LESTO, "performHandshake");
-                // Load the certificate string into an InputStream
-                try (InputStream inputStream = new ByteArrayInputStream(certificateString.getBytes())) {
-
-                    // Create a CertificateFactory and parse the certificate
-                    CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-                    Log.d(Constants.LESTO, "CertificateFactory");
-                    X509Certificate cert = (X509Certificate) certFactory.generateCertificate(inputStream);
-                    Log.d(Constants.LESTO, "X509Certificate");
-
-                    // Create a KeyStore containing the certificate
-                    KeyStore keyStore = KeyStore.getInstance(Constants.storeName);
-                    keyStore.load(null);
-                    keyStore.setCertificateEntry(Constants.certificateAlias, cert);
-                    Log.d(Constants.LESTO, "keyStore.setCertificateEntry");
-
-                    Intent broadcastIntent = new Intent(Constants.NEW_USER_HANDSHAKE);
-                    broadcastIntent.putExtra("result", "Task completed successfully");
-                    getContext().sendBroadcast(broadcastIntent);
+                ServerDescription.ServerInfoList serverList = ServerDescription.ServerInfoList.parseFrom(bytes);
+                serversList.clear();
+                serversList.addAll(serverList.getServersList());
+                List<String> serverNames = new ArrayList<>();
+                for (ServerDescription.ServerInfo i : serversList){
+                    serverNames.add(i.getName());
+                    Log.d("loadServerList", "Loaded server conf " + i.getName());
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    public void requestCode(){
-        // Launch QR code scanning app
-        Intent intent = new Intent("com.google.zxing.client.android.SCAN");
-        intent.putExtra("SCAN_MODE", "QR_CODE_MODE");
-        try {
-            qrScannerLauncher.launch(intent);
-        }catch (android.content.ActivityNotFoundException e){
-            Snackbar.make(getView(), "Could not find a QR code reader", Snackbar.LENGTH_SHORT).show();
-        }
-    }
-
-    public static void printDnsServers(Context context) {
-        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (connectivityManager != null) {
-            Network activeNetwork = connectivityManager.getActiveNetwork();
-            if (activeNetwork != null) {
-                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(activeNetwork);
-                if (capabilities != null) {
-                    LinkProperties linkProperties = connectivityManager.getLinkProperties(activeNetwork);
-                    if (linkProperties != null) {
-                        List<InetAddress> dnsServers = linkProperties.getDnsServers();
-                        for (InetAddress dnsServer : dnsServers) {
-                            Log.d(Constants.LESTO, dnsServer.getHostAddress());
-                        }
-                    }
-                }
+                serverNames.add("NEW");
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(c, android.R.layout.simple_spinner_item, serverNames);
+                adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                spinner.setAdapter(adapter);
+            } catch (InvalidProtocolBufferException e) {
+                throw new RuntimeException(e);
             }
         }
     }

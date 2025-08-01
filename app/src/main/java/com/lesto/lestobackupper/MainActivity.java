@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
             while (true) {
                 try {
                     Actions.localUpdatedFileList(this);
-                    Thread.sleep(1000);
+                    Thread.sleep(1000*300);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }

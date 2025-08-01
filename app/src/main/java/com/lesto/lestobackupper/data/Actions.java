@@ -12,8 +12,10 @@ import android.util.Log;
 import com.lesto.lestobackupper.Constants;
 import com.lesto.lestobackupper.data.db.AppDatabase;
 import com.lesto.lestobackupper.data.db.FileDatabase;
+import com.lesto.lestobackupper.data.db.FileHash;
 import com.lesto.lestobackupper.data.db.FileItem;
 import com.lesto.lestobackupper.data.db.UniqueFileId;
+import com.lesto.lestobackupper.proto.FileDescription;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -24,6 +26,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -131,14 +134,15 @@ public class Actions {
 
     @NotNull
     public static UniqueFileId getFileUniqueId(FileDatabase db, ContentResolver contentResolver, Uri contentUri) throws NoSuchAlgorithmException, IOException {
-        UniqueFileId hash = getFileHash(contentResolver, contentUri);
+        FileHash hash = getFileHash(contentResolver, contentUri);
 
-        List<FileItem> result = db.getFileByHash(hash.md5, hash.sha1); // al potential revision with the same hashes
+        List<FileItem> result = db.getFileByHash(hash.md5, hash.sha256); // al potential revision with the same hashes
 
+        int tmp_collision_id = 0;
         if (result != null){
             for (FileItem f : result){
-                if (hash.collisionId <= f.uniqueId.collisionId){
-                    hash.collisionId = f.uniqueId.collisionId + 1;
+                if (tmp_collision_id <= f.uniqueId.collisionId){
+                    tmp_collision_id = f.uniqueId.collisionId + 1;
                 }
                 if (f.localUri != null) {
                     if (areEquals(contentResolver, contentUri, f.localUri)) {
@@ -149,7 +153,7 @@ public class Actions {
                 }
             }
         }
-        return hash;
+        return new UniqueFileId(hash, tmp_collision_id);
     }
 
      public static boolean areEquals(ContentResolver contentResolver, Uri uri1, Uri uri2) {
@@ -178,122 +182,63 @@ public class Actions {
         }
     }
 
-    public static UniqueFileId getFileHash(ContentResolver contentResolver, Uri contentUri) throws NoSuchAlgorithmException, IOException {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            // Open an input stream to read the file's contents
-            try(FileInputStream inputStream = (FileInputStream) contentResolver.openInputStream(contentUri)) {
-                assert inputStream != null;
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    digest.update(buffer, 0, bytesRead);
-                    md.update(buffer, 0, bytesRead);
-                }
-
-                long res = 0;
-
-                byte[] hashBytesMD = md.digest();
-                assert hashBytesMD.length == 16;
-
-                byte[] hashBytes = digest.digest();
-                assert hashBytes.length == 32;
-
-                return new UniqueFileId(hashBytesMD, hashBytes, 0);
-            } catch (IOException e) {
-                e.printStackTrace();
-                throw e;
-            }
-        } catch (NoSuchAlgorithmException e) {
-            Log.d(Constants.LESTO, "no SHA hash!");
-            throw e;
-        }
+    public static FileHash getFileHash(ContentResolver contentResolver, Uri contentUri) throws NoSuchAlgorithmException, IOException {
+        return getFileHash(contentResolver, contentUri, -1); //-1 == read all file
     }
 
-//    public static void listFolder(Context context, DocumentFile file, List<FileItem> fileList){
-//
-//        AppDatabase db = AppDatabase.getInstance(context.getApplicationContext());
-//        FileDatabase fileDb = db.fileDao();
-//        if (file != null){
-//            if (file.isDirectory()) {
-//                for (DocumentFile subfile : file.listFiles()) {
-//                    if (subfile.isFile()) {
-//                        Log.d("File", "\tFile Name: " + subfile.getName());
-//
-//                        // Log the retrieved information
-//                        //Log.d(Constants.LESTO, "ID: " + id + " " + fileName + " " + filePath);
-//
-//                        try {
-//                            Pair<Boolean, UniqueFileId> id_hash = Actions.getFileUniqueIdAndTrueIfExist(fileDb, context.getContentResolver(), subfile.getUri());
-//                            if (!id_hash.first) {
-//                                fileList.add(new FileItem(id_hash.second, subfile.getName(), subfile.getUri(), null, 0, true, false));
-//                            }
-//                        } catch (NoSuchAlgorithmException e) {
-//                            e.printStackTrace();
-//                        } catch (IOException e) {
-//                            e.printStackTrace();
-//                        }
-//                    }
-//                    if (subfile.isDirectory()) {
-//                        // RECURSE!
-//                        String a = subfile.getUri().toString();
-//                        String b = file.getUri().toString();
-//                        if (!a.equals(b)) {
-//                            listFolder(context, subfile, fileList);
-//                        } else {
-//                            //weird duplicate case
-//                        }
-//                    }
-//                }
-//            }
-//            if (file.isFile()) {
-//                Log.d("File", "\tFile Name: " + file.getName());
-//
-//                try {
-//                    Pair<Boolean, UniqueFileId> id_hash = Actions.getFileUniqueIdAndTrueIfExist(fileDb, context.getContentResolver(), file.getUri());
-//                    if (!id_hash.first) {
-//                        assert file.getName() != null;
-//                        fileList.add(new FileItem(id_hash.second, file.getName(), file.getUri(), null, 0, true, false));
-//                    }
-//                } catch (NoSuchAlgorithmException e) {
-//                    e.printStackTrace();
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }
-//    }
+    public static FileHash getFileHash(ContentResolver contentResolver, Uri contentUri, long filesize) throws NoSuchAlgorithmException, IOException {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        MessageDigest md = MessageDigest.getInstance("MD5");
+        // Open an input stream to read the file's contents
+        try(FileInputStream inputStream = (FileInputStream) contentResolver.openInputStream(contentUri)) {
+            assert inputStream != null;
+            final int DEFAULT_READ_SIZE = 8192;
+            byte[] buffer;
+            if (filesize != -1 && filesize < DEFAULT_READ_SIZE)
+                buffer = new byte[(int)filesize];
+            else
+                buffer = new byte[DEFAULT_READ_SIZE];
+
+            long remaining = filesize;
+            long size = 0;
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1 && remaining != 0) {
+                digest.update(buffer, 0, bytesRead);
+                md.update(buffer, 0, bytesRead);
+                size += bytesRead;
+
+                if (remaining != -1){
+                    //if we are not reading the full file, make sure to read only the remaining
+                    remaining -= bytesRead;
+                    if (remaining > buffer.length){
+                        buffer = new byte[(int)remaining];
+                    }
+                }
+            }
+
+            byte[] hashBytesMD = md.digest();
+            assert hashBytesMD.length == 16;
+
+            byte[] hashBytes = digest.digest();
+            assert hashBytes.length == 32;
+
+            return new FileHash(hashBytesMD, hashBytes, size);
+        }
+    }
 
     public static List<FileItem> localUpdatedFileList(Context context) {
 
         Log.d(Constants.LESTO, "localUpdatedFileList load DB");
         FileDatabase db = AppDatabase.getInstance(context).fileDao();
         Log.d(Constants.LESTO, "localUpdatedFileList Get all");
-        Map<String, FileItem> files = db.getAllByRemoteId();
+        Map<String, FileItem> files = new HashMap<>();
+        for (FileItem f : db.getAllByRemoteId()){
+            files.put(f.uniqueId.toString(), f);
+        }
 
         ArrayList<FileItem> complete = new ArrayList<>();
         Log.d(Constants.LESTO, "localUpdatedFileList Find new files missing in db " + db.getAllFolder().size() + " " + files.size());
-/*
-        for (FolderItem folder : db.getAllFolder()){
-            Log.d("File", "FolderItem: " + folder.localUri);
-            Uri treeUri = Uri.parse(folder.localUri);
-            //DocumentFile fileOnDisk = DocumentFile.fromTreeUri(context, treeUri);
 
-            ArrayList<FileItem> tmp = new ArrayList<>();
-            DocumentFile fileOnDisk = DocumentFile.fromTreeUri(context, treeUri);
-            listFolder(context, fileOnDisk, tmp);
-            for (FileItem i: tmp){
-                Log.d(Constants.LESTO, "localUpdatedFileList file: " + i.name);
-                FileItem db_item = files.remove(i.localId);
-                if (db_item == null){
-                    Log.d(Constants.LESTO, "^ is NEW: " + i.name);
-                    to_add.add(i);
-                }
-                complete.add(i);
-            }
-        }
-*/
         Log.d(Constants.LESTO, "updating mediastore");
         int new_count = 0, verified_count = 0;
         //List<FileItem> newFiles = new ArrayList<>(100);
@@ -323,9 +268,6 @@ public class Actions {
                 e.printStackTrace();
             }
         }
-        //db.insertAll(newFiles);
-        //newFiles.clear();
-
 
         Log.i(Constants.LESTO, "localUpdatedFileList Save new files in db, new found: " + new_count + " verified: " + verified_count);
 
@@ -390,41 +332,14 @@ public class Actions {
         db.update(f);
     }
 
-    public static class CloudConfig{
-        public final String MY_CLIENT_ID;
-        public final Uri MY_REDIRECT_URI;
-
-        public CloudConfig(String client_id, Uri uri){
-            this.MY_CLIENT_ID = client_id;
-            MY_REDIRECT_URI = uri;
+    public static FileItem getFromDb(Context context, FileDescription.UniqueFileId fileId) {
+        FileDatabase db = AppDatabase.getInstance(context).fileDao();
+        List<FileItem> fileByUniqueId = db.getFileByUniqueId(fileId.getHash().getMd5(), fileId.getHash().getSha256(), fileId.getCollisionId());
+        assert fileByUniqueId.isEmpty() || fileByUniqueId.size() == 1; //this should be a unique key
+        if (fileByUniqueId.isEmpty()){
+            return null;
+        }else{
+            return fileByUniqueId.get(0);
         }
     }
-
-//    public static void requestAuth2(Context context, CloudConfig c){
-//        AuthorizationServiceConfiguration.fetchFromIssuer(
-//            Uri.parse("https://idp.example.com"),
-//            new AuthorizationServiceConfiguration.RetrieveConfigurationCallback() {
-//                public void onFetchConfigurationCompleted(
-//                        @Nullable AuthorizationServiceConfiguration serviceConfiguration,
-//                        @Nullable AuthorizationException ex) {
-//                    if (ex != null) {
-//                        Log.e(Constants.LESTO, "failed to fetch configuration");
-//                        return;
-//                    }
-//
-//                    // use serviceConfiguration as needed
-//                    AuthorizationRequest.Builder authRequestBuilder =
-//                        new AuthorizationRequest.Builder(
-//                            serviceConfiguration, // the authorization service configuration
-//                            c.MY_CLIENT_ID, // the client ID, typically pre-registered and static
-//                            ResponseTypeValues.CODE, // the response_type value: we want a code
-//                            c.MY_REDIRECT_URI); // the redirect URI to which the auth response is sent
-//                    AuthorizationService authService = new AuthorizationService(context);
-//                    Intent authIntent = authService.getAuthorizationRequestIntent(authRequestBuilder.build());
-//                    context.startActivityForResult(authIntent, RC_AUTH);
-//                }
-//            });
-//    }
-
-
 }

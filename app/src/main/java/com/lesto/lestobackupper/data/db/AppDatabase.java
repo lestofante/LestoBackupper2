@@ -7,7 +7,7 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
-@Database(entities = {FileItem.class, FolderItem.class}, version = 10)
+@Database(entities = {FileItem.class, FolderItem.class}, version = 13)
 @TypeConverters({Converters.class})
 public abstract class AppDatabase extends RoomDatabase {
     public abstract FileDatabase fileDao();

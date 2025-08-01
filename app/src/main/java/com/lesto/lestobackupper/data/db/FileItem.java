@@ -10,7 +10,7 @@ import androidx.room.PrimaryKey;
 
 import java.util.Objects;
 
-@Entity(indices = {@Index(value = {"md5", "sha1", "collisionId"}, unique = true)})
+@Entity(indices = {@Index(value = {"md5", "sha256", "collisionId"}, unique = true)})
 public class FileItem {
 
     @PrimaryKey(autoGenerate = true)
@@ -61,7 +61,7 @@ public class FileItem {
         return (int)localId; //good enough
     }
 
-    public long gerLocalId() {
+    public long getLocalId() {
         return localId;
     }
 }

@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option java_package = "com.lesto.lestobackupper.proto";
+
+message FileHash {
+  string md5 = 1;
+  string sha256 = 2;
+  int64 file_size = 3;
+}
+
+message UniqueFileId {
+  FileHash hash = 1;
+  int32 collision_id = 2;
+}
+
+message FileToDownload {
+  UniqueFileId file_id = 1;
+  string current_md5 = 2;
+  string current_sha256 = 3;
+  uint64 current_size = 4;   // usize mapped to uint64 for safety
+}
+
+message FileOK {
+  UniqueFileId file_id = 1;
+}
+
+message ServerMessage {
+  oneof kind {
+    FileToDownload file_to_download = 1;
+    FileOK file_ok = 2;
+  }
+}
+
+
+message NewFileId {
+  UniqueFileId file_id = 1;
+  uint64 size = 2;
+}
+
+message FileToDownloadInvalid {
+  UniqueFileId file_id = 1;
+  string current_md5 = 2;
+  string current_sha256 = 3;
+  uint64 current_size = 4;   // usize mapped to uint64 for safety
+}
+
+message FileChunk {
+  UniqueFileId file_id = 1;
+  bytes data = 2;
+}
+
+message ClientMessage {
+  oneof kind {
+    NewFileId file_new = 1;
+    FileChunk file_chunk = 2;
+    FileToDownloadInvalid file_invalid = 3;
+  }
+}
